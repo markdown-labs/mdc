@@ -1,0 +1,10 @@
+[package]
+description = "Rust parser combinator framework for small languages."
+documentation = "https://docs.rs/parserc"
+edition = "2024"
+license = "MIT"
+name = "parserc"
+repository = "https://github.com/markdown-labs/mdc/crates/parserc"
+version = "0.10.0"
+
+[dependencies]

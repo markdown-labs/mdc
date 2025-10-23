@@ -1,0 +1,7 @@
+[package]
+name = "compiler"
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+parserc = "0.9.5"

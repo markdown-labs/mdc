@@ -1,15 +1,16 @@
 use std::{
     fmt::Debug,
-    marker::PhantomData,
     str::{CharIndices, Chars},
 };
 
 use memchr::memmem;
-use parserc::{AsBytes, AsStr, Find, Input, ParseError, StartWith};
+use parserc::{AsBytes, AsStr, Find, Input, StartWith};
+
+use crate::MarkDownError;
 
 /// Define `input` type of markdown document.
 pub trait MarkDownInput:
-    Input<Item = char>
+    Input<Item = char, Error = MarkDownError>
     + AsBytes
     + AsStr
     + StartWith<&'static str>
@@ -24,26 +25,23 @@ pub trait MarkDownInput:
 
 /// `Input` for compute language parsing.
 #[derive(Eq, PartialOrd, Ord, Hash)]
-pub struct TokenStream<'a, E> {
+pub struct TokenStream<'a> {
     /// offset in the whole token stream.
     pub offset: usize,
     /// current segement string int the whole token stream.
     pub value: &'a str,
-    /// Error type returns by this input.
-    _marker: PhantomData<E>,
 }
 
-impl<'a, E> Clone for TokenStream<'a, E> {
+impl<'a> Clone for TokenStream<'a> {
     fn clone(&self) -> Self {
         Self {
             offset: self.offset,
             value: self.value,
-            _marker: Default::default(),
         }
     }
 }
 
-impl<'a, E> Debug for TokenStream<'a, E> {
+impl<'a> Debug for TokenStream<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TokenStream")
             .field("offset", &self.offset)
@@ -52,39 +50,31 @@ impl<'a, E> Debug for TokenStream<'a, E> {
     }
 }
 
-impl<'a, E> PartialEq for TokenStream<'a, E> {
+impl<'a> PartialEq for TokenStream<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.offset == other.offset && self.value == other.value
     }
 }
 
-impl<'a, E> From<&'a str> for TokenStream<'a, E> {
+impl<'a> From<&'a str> for TokenStream<'a> {
     fn from(value: &'a str) -> Self {
-        TokenStream {
-            offset: 0,
-            value,
-            _marker: Default::default(),
-        }
+        TokenStream { offset: 0, value }
     }
 }
 
-impl<'a, E> From<(usize, &'a str)> for TokenStream<'a, E> {
+impl<'a> From<(usize, &'a str)> for TokenStream<'a> {
     fn from(value: (usize, &'a str)) -> Self {
         TokenStream {
             offset: value.0,
             value: value.1,
-            _marker: Default::default(),
         }
     }
 }
 
-impl<'a, E> Input for TokenStream<'a, E>
-where
-    E: ParseError,
-{
+impl<'a> Input for TokenStream<'a> {
     type Item = char;
 
-    type Error = E;
+    type Error = MarkDownError;
 
     type Iter = Chars<'a>;
 
@@ -106,7 +96,6 @@ where
         TokenStream {
             offset,
             value: first,
-            _marker: Default::default(),
         }
     }
 
@@ -119,7 +108,6 @@ where
         TokenStream {
             offset: self.offset + at,
             value: last,
-            _marker: Default::default(),
         }
     }
 
@@ -144,21 +132,21 @@ where
     }
 }
 
-impl<'a, E> AsBytes for TokenStream<'a, E> {
+impl<'a> AsBytes for TokenStream<'a> {
     #[inline]
     fn as_bytes(&self) -> &[u8] {
         self.value.as_bytes()
     }
 }
 
-impl<'a, E> AsStr for TokenStream<'a, E> {
+impl<'a> AsStr for TokenStream<'a> {
     #[inline]
     fn as_str(&self) -> &str {
         self.value
     }
 }
 
-impl<'a, E> StartWith<&str> for TokenStream<'a, E> {
+impl<'a> StartWith<&str> for TokenStream<'a> {
     #[inline]
     fn starts_with(&self, needle: &str) -> Option<usize> {
         if self.as_bytes().starts_with(needle.as_bytes()) {
@@ -169,7 +157,7 @@ impl<'a, E> StartWith<&str> for TokenStream<'a, E> {
     }
 }
 
-impl<'a, E> StartWith<&[u8]> for TokenStream<'a, E> {
+impl<'a> StartWith<&[u8]> for TokenStream<'a> {
     #[inline]
     fn starts_with(&self, needle: &[u8]) -> Option<usize> {
         if self.as_bytes().starts_with(needle) {
@@ -180,7 +168,7 @@ impl<'a, E> StartWith<&[u8]> for TokenStream<'a, E> {
     }
 }
 
-impl<'a, const N: usize, E> StartWith<&[u8; N]> for TokenStream<'a, E> {
+impl<'a, const N: usize> StartWith<&[u8; N]> for TokenStream<'a> {
     #[inline]
     fn starts_with(&self, needle: &[u8; N]) -> Option<usize> {
         if self.as_bytes().starts_with(needle) {
@@ -191,25 +179,25 @@ impl<'a, const N: usize, E> StartWith<&[u8; N]> for TokenStream<'a, E> {
     }
 }
 
-impl<'a, E> Find<&str> for TokenStream<'a, E> {
+impl<'a> Find<&str> for TokenStream<'a> {
     #[inline]
     fn find(&self, needle: &str) -> Option<usize> {
         memmem::find(self.as_bytes(), needle.as_bytes())
     }
 }
 
-impl<'a, E> Find<&[u8]> for TokenStream<'a, E> {
+impl<'a> Find<&[u8]> for TokenStream<'a> {
     #[inline]
     fn find(&self, needle: &[u8]) -> Option<usize> {
         memmem::find(self.as_bytes(), needle)
     }
 }
 
-impl<'a, const N: usize, E> Find<&[u8; N]> for TokenStream<'a, E> {
+impl<'a, const N: usize> Find<&[u8; N]> for TokenStream<'a> {
     #[inline]
     fn find(&self, needle: &[u8; N]) -> Option<usize> {
         memmem::find(self.as_bytes(), needle)
     }
 }
 
-impl<'a, E> MarkDownInput for TokenStream<'a, E> where E: ParseError + Clone {}
+impl<'a> MarkDownInput for TokenStream<'a> {}

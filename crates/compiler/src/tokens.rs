@@ -1,16 +1,16 @@
 use parserc::{
-    Item, Parser, next_if,
+    ControlFlow, Item, Parser, next_if,
     syntax::{Syntax, keyword},
     take_while,
 };
 
-use crate::MarkDownInput;
+use crate::{MarkDownError, MarkDownInput};
 
 keyword!(LR, "\n");
 keyword!(CRLR, "\r\n");
 
 /// Syntax for newline token.
-#[derive(Debug, Clone, Syntax)]
+#[derive(Debug, Clone, PartialEq, Eq, Syntax)]
 pub enum NewLine<I>
 where
     I: MarkDownInput,
@@ -22,7 +22,7 @@ where
 }
 
 /// Valid horizon chars.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Horizon<I>
 where
     I: MarkDownInput,
@@ -48,6 +48,13 @@ where
 
         content.split_off(next.len() + tails.len());
 
+        if content.len() < 3 {
+            return Err(MarkDownError::Horizon(
+                ControlFlow::Recovable,
+                content.to_span(),
+            ));
+        }
+
         match next {
             '*' => Ok(Self::Stars(content)),
             '_' => Ok(Self::Underscores(content)),
@@ -72,5 +79,33 @@ where
         take_while(|c: char| c.is_whitespace())
             .parse(input)
             .map(|input| Self(input))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use parserc::Span;
+
+    use super::*;
+    use crate::TokenStream;
+
+    #[test]
+    fn test_horizon() {
+        let mut input = TokenStream::from("***");
+
+        assert_eq!(
+            Horizon::parse(&mut input),
+            Ok(Horizon::Stars(TokenStream::from("***")))
+        );
+
+        let mut input = TokenStream::from("**");
+
+        assert_eq!(
+            Horizon::parse(&mut input),
+            Err(MarkDownError::Horizon(
+                ControlFlow::Recovable,
+                Span::Range(0..2)
+            ))
+        );
     }
 }

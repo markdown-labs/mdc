@@ -6,3 +6,4 @@ version.workspace = true
 [dependencies]
 parserc = "^0.10"
 memchr = { version = "2.7.6"}
+thiserror = "2.0.17"

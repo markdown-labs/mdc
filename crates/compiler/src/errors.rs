@@ -7,11 +7,16 @@ pub enum MarkDownError {
     Kind(ControlFlow, Kind),
     #[error("{0:?}: Parsing `horizon` error, {1:?}")]
     Horizon(ControlFlow, Span),
+    #[error("{0:?}: Parsing `newline` error, {1:?}")]
+    NewLine(ControlFlow, Span),
 }
 
 impl From<(ControlFlow, Kind)> for MarkDownError {
     fn from(value: (ControlFlow, Kind)) -> Self {
-        MarkDownError::Kind(value.0, value.1)
+        match value.1 {
+            Kind::Syntax("NewLine", span) => MarkDownError::NewLine(value.0, span),
+            _ => MarkDownError::Kind(value.0, value.1),
+        }
     }
 }
 
@@ -20,6 +25,7 @@ impl ParseError for MarkDownError {
         match self {
             MarkDownError::Kind(control_flow, _) => *control_flow,
             MarkDownError::Horizon(control_flow, _) => *control_flow,
+            MarkDownError::NewLine(control_flow, _) => *control_flow,
         }
     }
 
@@ -27,6 +33,7 @@ impl ParseError for MarkDownError {
         match self {
             MarkDownError::Kind(_, kind) => MarkDownError::Kind(ControlFlow::Fatal, kind),
             MarkDownError::Horizon(_, span) => MarkDownError::Horizon(ControlFlow::Fatal, span),
+            MarkDownError::NewLine(_, span) => MarkDownError::NewLine(ControlFlow::Fatal, span),
         }
     }
 }

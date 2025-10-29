@@ -20,6 +20,9 @@ pub trait MarkDownInput:
     + Clone
     + Debug
     + PartialEq
+    + Eq
+    + PartialOrd
+    + Ord
 {
 }
 

@@ -10,7 +10,7 @@ keyword!(LR, "\n");
 keyword!(CRLR, "\r\n");
 
 /// Syntax for newline token.
-#[derive(Debug, Clone, PartialEq, Eq, Syntax)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Syntax)]
 pub enum NewLine<I>
 where
     I: MarkDownInput,
@@ -22,7 +22,7 @@ where
 }
 
 /// Valid horizon chars.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Horizon<I>
 where
     I: MarkDownInput,
@@ -65,7 +65,7 @@ where
 }
 
 // Whitespace chars.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct S<I>(I)
 where
     I: MarkDownInput;
@@ -124,5 +124,22 @@ mod tests {
             NewLine::parse(&mut input),
             Ok(NewLine::CRLR(Crlr(TokenStream::from("\r\n"))))
         );
+
+        let mut input = TokenStream::from("\r \n");
+
+        assert_eq!(
+            NewLine::parse(&mut input),
+            Err(MarkDownError::NewLine(
+                ControlFlow::Recovable,
+                Span::Range(0..3)
+            ))
+        );
+    }
+
+    #[test]
+    fn test_s() {
+        let mut input = TokenStream::from("     ");
+
+        assert_eq!(S::parse(&mut input), Ok(S(TokenStream::from("     "))));
     }
 }

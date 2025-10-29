@@ -108,4 +108,21 @@ mod tests {
             ))
         );
     }
+
+    #[test]
+    fn test_newline() {
+        let mut input = TokenStream::from("\n");
+
+        assert_eq!(
+            NewLine::parse(&mut input),
+            Ok(NewLine::LR(Lr(TokenStream::from("\n"))))
+        );
+
+        let mut input = TokenStream::from("\r\n");
+
+        assert_eq!(
+            NewLine::parse(&mut input),
+            Ok(NewLine::CRLR(Crlr(TokenStream::from("\r\n"))))
+        );
+    }
 }

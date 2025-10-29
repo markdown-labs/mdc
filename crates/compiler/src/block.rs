@@ -1,17 +1,17 @@
 use parserc::syntax::Syntax;
 
-use crate::{Horizon, MarkDownInput, NewLine, S};
+use crate::{MarkDownInput, NewLine, S, ThematicBreaks};
 
-/// Horizon line block.
+/// Thematic breaks.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Syntax)]
-pub struct HorizonLine<I>
+pub struct ThematicBreaksBlock<I>
 where
     I: MarkDownInput,
 {
     /// Optional identation
     pub leading_whitespaces: Option<S<I>>,
     /// Main horizon chars: `**..` | `---..` | `___...`
-    pub horizon: Horizon<I>,
+    pub horizon: ThematicBreaks<I>,
     /// Optional trailing whitespace chars.
     pub trailing_whitespaces: Option<S<I>>,
     /// New line broken.
@@ -24,7 +24,7 @@ where
 mod tests {
     use parserc::syntax::InputSyntaxExt;
 
-    use crate::{Horizon, HorizonLine, NewLine, S, TokenStream};
+    use crate::{NewLine, S, ThematicBreaks, ThematicBreaksBlock, TokenStream};
 
     #[test]
     fn test_horizon_line() {
@@ -32,9 +32,9 @@ mod tests {
 
         assert_eq!(
             input.parse(),
-            Ok(HorizonLine {
+            Ok(ThematicBreaksBlock {
                 leading_whitespaces: Some(S(TokenStream::from("     "))),
-                horizon: Horizon::Stars(TokenStream::from((5, "******"))),
+                horizon: ThematicBreaks::Stars(TokenStream::from((5, "******"))),
                 trailing_whitespaces: Some(S(TokenStream::from((11, "   ")))),
                 new_line: Some(NewLine::CRLR(TokenStream::from((14, "\r\n"))))
             })

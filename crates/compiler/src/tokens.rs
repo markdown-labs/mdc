@@ -35,9 +35,9 @@ where
     }
 }
 
-/// Valid horizon chars.
+/// Thematic break chars.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Horizon<I>
+pub enum ThematicBreaks<I>
 where
     I: MarkDownInput,
 {
@@ -46,7 +46,7 @@ where
     Minus(I),
 }
 
-impl<I> Syntax<I> for Horizon<I>
+impl<I> Syntax<I> for ThematicBreaks<I>
 where
     I: MarkDownInput,
 {
@@ -108,14 +108,14 @@ mod tests {
         let mut input = TokenStream::from("***");
 
         assert_eq!(
-            Horizon::parse(&mut input),
-            Ok(Horizon::Stars(TokenStream::from("***")))
+            ThematicBreaks::parse(&mut input),
+            Ok(ThematicBreaks::Stars(TokenStream::from("***")))
         );
 
         let mut input = TokenStream::from("**");
 
         assert_eq!(
-            Horizon::parse(&mut input),
+            ThematicBreaks::parse(&mut input),
             Err(MarkDownError::Horizon(
                 ControlFlow::Recovable,
                 Span::Range(0..2)

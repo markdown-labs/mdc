@@ -1,24 +1,38 @@
-use parserc::{
-    ControlFlow, Item, Parser, next_if,
-    syntax::{Syntax, keyword},
-    take_while,
-};
+use parserc::{ControlFlow, Item, ParseError, Parser, next_if, syntax::Syntax, take_while};
 
 use crate::{MarkDownError, MarkDownInput};
 
-keyword!(LR, "\n");
-keyword!(CRLR, "\r\n");
+mod kw {
+    use parserc::syntax::keyword;
+
+    keyword!(LR, "\n");
+    keyword!(CRLR, "\r\n");
+}
 
 /// Syntax for newline token.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Syntax)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NewLine<I>
 where
     I: MarkDownInput,
 {
     /// \n
-    LR(Lr<I>),
+    LR(I),
     /// \r\n
-    CRLR(Crlr<I>),
+    CRLR(I),
+}
+
+impl<I> Syntax<I> for NewLine<I>
+where
+    I: MarkDownInput,
+{
+    #[inline]
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        kw::Crlr::into_parser()
+            .map(|input| Self::CRLR(input.0))
+            .or(kw::Lr::into_parser().map(|input| Self::LR(input.0)))
+            .parse(input)
+            .map_err(|err| MarkDownError::NewLine(err.control_flow(), err.span()))
+    }
 }
 
 /// Valid horizon chars.
@@ -66,7 +80,7 @@ where
 
 // Whitespace chars.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct S<I>(I)
+pub struct S<I>(pub I)
 where
     I: MarkDownInput;
 
@@ -76,7 +90,7 @@ where
 {
     #[inline]
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
-        take_while(|c: char| c.is_whitespace())
+        take_while(|c: char| c != '\r' && c != '\n' && c.is_whitespace())
             .parse(input)
             .map(|input| Self(input))
     }
@@ -115,14 +129,14 @@ mod tests {
 
         assert_eq!(
             NewLine::parse(&mut input),
-            Ok(NewLine::LR(Lr(TokenStream::from("\n"))))
+            Ok(NewLine::LR(TokenStream::from("\n")))
         );
 
         let mut input = TokenStream::from("\r\n");
 
         assert_eq!(
             NewLine::parse(&mut input),
-            Ok(NewLine::CRLR(Crlr(TokenStream::from("\r\n"))))
+            Ok(NewLine::CRLR(TokenStream::from("\r\n")))
         );
 
         let mut input = TokenStream::from("\r \n");

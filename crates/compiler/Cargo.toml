@@ -4,4 +4,5 @@ edition = "2024"
 version.workspace = true
 
 [dependencies]
-parserc = "0.9.5"
+parserc = "^0.10"
+memchr = { version = "2.7.6"}

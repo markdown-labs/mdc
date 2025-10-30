@@ -8,6 +8,7 @@ version = "0.1.2"
 dependencies = [
  "memchr",
  "parserc",
+ "serde",
  "thiserror",
 ]
 

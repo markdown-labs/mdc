@@ -1,4 +1,8 @@
-use parserc::{ControlFlow, Item, ParseError, Parser, next_if, syntax::Syntax, take_while};
+use parserc::{
+    ControlFlow, Item, ParseError, Parser, next_if,
+    syntax::{LimitsTo, Syntax},
+    take_while,
+};
 
 use crate::{MarkDownError, MarkDownInput};
 
@@ -11,6 +15,7 @@ mod kw {
 
 /// Syntax for newline token.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum NewLine<I>
 where
     I: MarkDownInput,
@@ -32,6 +37,14 @@ where
             .or(kw::Lr::into_parser().map(|input| Self::LR(input.0)))
             .parse(input)
             .map_err(|err| MarkDownError::NewLine(err.control_flow(), err.span()))
+    }
+
+    #[inline]
+    fn to_span(&self) -> parserc::Span {
+        match self {
+            NewLine::LR(v) => v.to_span(),
+            NewLine::CRLR(v) => v.to_span(),
+        }
     }
 }
 
@@ -76,10 +89,19 @@ where
             _ => unreachable!("Safety: guard by `next_if ...`"),
         }
     }
+
+    fn to_span(&self) -> parserc::Span {
+        match self {
+            ThematicBreaks::Stars(v) => v.to_span(),
+            ThematicBreaks::Underscores(v) => v.to_span(),
+            ThematicBreaks::Minus(v) => v.to_span(),
+        }
+    }
 }
 
 // Whitespace chars.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct S<I>(pub I)
 where
     I: MarkDownInput;
@@ -94,11 +116,82 @@ where
             .parse(input)
             .map(|input| Self(input))
     }
+
+    #[inline]
+    fn to_span(&self) -> parserc::Span {
+        self.0.to_span()
+    }
+}
+
+// Block leading whitespaces.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct LeadingWhiteSpace<I, const N: usize>(pub I)
+where
+    I: MarkDownInput;
+
+impl<I, const N: usize> Syntax<I> for LeadingWhiteSpace<I, N>
+where
+    I: MarkDownInput,
+{
+    #[inline]
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        let s = LimitsTo::<S<I>, N>::parse(input)
+            .map_err(|err| MarkDownError::LeadingWhiteSpace(err.control_flow(), err.span()))?;
+
+        Ok(Self(s.0.0))
+    }
+
+    #[inline]
+    fn to_span(&self) -> parserc::Span {
+        self.0.to_span()
+    }
+}
+
+//Leading pound chars for `headings` block.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct LeadingPounds<I>(pub I);
+
+impl<I> Syntax<I> for LeadingPounds<I>
+where
+    I: MarkDownInput,
+{
+    #[inline]
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        let content = take_while(|c| c == '#').parse(input)?;
+
+        let len = match content.to_span() {
+            parserc::Span::None => 0,
+            parserc::Span::Range(range) => range.len(),
+            parserc::Span::RangeTo(range_to) => range_to.end,
+            _ => {
+                return Err(MarkDownError::LeadingPounds(
+                    ControlFlow::Recovable,
+                    content.to_span(),
+                ));
+            }
+        };
+
+        if len < 1 || !(len < 6) {
+            return Err(MarkDownError::LeadingPounds(
+                ControlFlow::Recovable,
+                content.to_span(),
+            ));
+        }
+
+        Ok(Self(content))
+    }
+
+    #[inline]
+    fn to_span(&self) -> parserc::Span {
+        self.0.to_span()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use parserc::Span;
+    use parserc::{Span, syntax::InputSyntaxExt};
 
     use super::*;
     use crate::TokenStream;
@@ -155,5 +248,33 @@ mod tests {
         let mut input = TokenStream::from("     ");
 
         assert_eq!(S::parse(&mut input), Ok(S(TokenStream::from("     "))));
+    }
+
+    #[test]
+    fn test_leading_pounds() {
+        for i in 1..6 {
+            let code = "#".repeat(i);
+
+            assert_eq!(
+                TokenStream::from(code.as_str()).parse(),
+                Ok(LeadingPounds(TokenStream::from(code.as_str())))
+            );
+        }
+
+        assert_eq!(
+            TokenStream::from("  ").parse::<LeadingPounds<_>>(),
+            Err(MarkDownError::LeadingPounds(
+                ControlFlow::Recovable,
+                Span::Range(0..0),
+            ))
+        );
+
+        assert_eq!(
+            TokenStream::from("#######").parse::<LeadingPounds<_>>(),
+            Err(MarkDownError::LeadingPounds(
+                ControlFlow::Recovable,
+                Span::Range(0..7),
+            ))
+        );
     }
 }

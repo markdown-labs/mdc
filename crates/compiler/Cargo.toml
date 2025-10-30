@@ -7,3 +7,7 @@ version.workspace = true
 parserc = "^0.10"
 memchr = { version = "2.7.6"}
 thiserror = "2.0.17"
+serde = { version = "1.0.228", optional = true }
+
+[features]
+serde = ["dep:serde","serde/derive"]

@@ -1,6 +1,6 @@
 use parserc::syntax::Syntax;
 
-use crate::{LeadingPounds, LeadingWhiteSpace, MarkDownInput, NewLine, S, ThematicBreaks};
+use crate::{LeadingPounds, LeadingWhiteSpace, LineEnding, MarkDownInput, S, ThematicBreaks};
 
 /// Thematic breaks.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Syntax)]
@@ -18,7 +18,7 @@ where
     /// New line broken.
     ///
     /// This section is optional if this line block constitutes the final line of a document.
-    pub new_line: Option<NewLine<I>>,
+    pub new_line: Option<LineEnding<I>>,
 }
 
 /// ATX heading block.
@@ -32,12 +32,29 @@ where
     pub leading_whitespaces: LeadingWhiteSpace<I, 5>,
     /// leading unescaped `#` chars.
     pub leading_pounds: LeadingPounds<I>,
+    /// inline content.
+    pub content: InlineContent<I>,
     /// trailing whitespaces.
     pub trailing_whitespaces: S<I>,
     /// New line broken.
     ///
     /// This section is optional if this line block constitutes the final line of a document.
-    pub new_line: Option<NewLine<I>>,
+    pub new_line: Option<LineEnding<I>>,
+}
+
+/// Inline content of one block.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct InlineContent<I>
+where
+    I: MarkDownInput,
+{
+    /// content.
+    pub content: I,
+    /// New line broken.
+    ///
+    /// This section is optional if this line block constitutes the final line of a document.
+    pub new_line: Option<LineEnding<I>>,
 }
 
 #[cfg(test)]
@@ -45,7 +62,7 @@ mod tests {
     use parserc::{ControlFlow, Span, syntax::InputSyntaxExt};
 
     use crate::{
-        LeadingWhiteSpace, MarkDownError, NewLine, S, ThematicBreaks, ThematicBreaksLine,
+        LeadingWhiteSpace, LineEnding, MarkDownError, S, ThematicBreaks, ThematicBreaksLine,
         TokenStream,
     };
 
@@ -59,7 +76,7 @@ mod tests {
                 leading_whitespaces: LeadingWhiteSpace(TokenStream::from("   ")),
                 horizon: ThematicBreaks::Stars(TokenStream::from((3, "******"))),
                 trailing_whitespaces: S(TokenStream::from((9, "   "))),
-                new_line: Some(NewLine::CRLR(TokenStream::from((12, "\r\n"))))
+                new_line: Some(LineEnding::CRLR(TokenStream::from((12, "\r\n"))))
             })
         );
 

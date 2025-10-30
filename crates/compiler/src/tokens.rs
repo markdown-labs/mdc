@@ -1,6 +1,6 @@
 use parserc::{
     ControlFlow, Item, ParseError, Parser, next_if,
-    syntax::{LimitsTo, Syntax},
+    syntax::{LimitsTo, Syntax, token},
     take_while,
 };
 
@@ -13,10 +13,10 @@ mod kw {
     keyword!(CRLR, "\r\n");
 }
 
-/// Syntax for newline token.
+/// Token for line ending.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum NewLine<I>
+pub enum LineEnding<I>
 where
     I: MarkDownInput,
 {
@@ -26,7 +26,7 @@ where
     CRLR(I),
 }
 
-impl<I> Syntax<I> for NewLine<I>
+impl<I> Syntax<I> for LineEnding<I>
 where
     I: MarkDownInput,
 {
@@ -42,8 +42,8 @@ where
     #[inline]
     fn to_span(&self) -> parserc::Span {
         match self {
-            NewLine::LR(v) => v.to_span(),
-            NewLine::CRLR(v) => v.to_span(),
+            LineEnding::LR(v) => v.to_span(),
+            LineEnding::CRLR(v) => v.to_span(),
         }
     }
 }
@@ -99,29 +99,7 @@ where
     }
 }
 
-// Whitespace chars.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct S<I>(pub I)
-where
-    I: MarkDownInput;
-
-impl<I> Syntax<I> for S<I>
-where
-    I: MarkDownInput,
-{
-    #[inline]
-    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
-        take_while(|c: char| c != '\r' && c != '\n' && c.is_whitespace())
-            .parse(input)
-            .map(|input| Self(input))
-    }
-
-    #[inline]
-    fn to_span(&self) -> parserc::Span {
-        self.0.to_span()
-    }
-}
+token!(S, |c: char| c != '\r' && c != '\n' && c.is_whitespace());
 
 // Block leading whitespaces.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -221,21 +199,21 @@ mod tests {
         let mut input = TokenStream::from("\n");
 
         assert_eq!(
-            NewLine::parse(&mut input),
-            Ok(NewLine::LR(TokenStream::from("\n")))
+            LineEnding::parse(&mut input),
+            Ok(LineEnding::LR(TokenStream::from("\n")))
         );
 
         let mut input = TokenStream::from("\r\n");
 
         assert_eq!(
-            NewLine::parse(&mut input),
-            Ok(NewLine::CRLR(TokenStream::from("\r\n")))
+            LineEnding::parse(&mut input),
+            Ok(LineEnding::CRLR(TokenStream::from("\r\n")))
         );
 
         let mut input = TokenStream::from("\r \n");
 
         assert_eq!(
-            NewLine::parse(&mut input),
+            LineEnding::parse(&mut input),
             Err(MarkDownError::NewLine(
                 ControlFlow::Recovable,
                 Span::Range(0..3)
@@ -245,9 +223,9 @@ mod tests {
 
     #[test]
     fn test_s() {
-        let mut input = TokenStream::from("     ");
+        let mut input = TokenStream::from("     \t");
 
-        assert_eq!(S::parse(&mut input), Ok(S(TokenStream::from("     "))));
+        assert_eq!(S::parse(&mut input), Ok(S(TokenStream::from("     \t"))));
     }
 
     #[test]

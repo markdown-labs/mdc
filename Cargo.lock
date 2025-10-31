@@ -6,6 +6,7 @@ version = 4
 name = "compiler"
 version = "0.1.2"
 dependencies = [
+ "entities",
  "memchr",
  "parserc",
  "serde",
@@ -20,6 +21,12 @@ checksum = "baaaa0ecca5b51987b9423ccdc971514dd8b0bb7b4060b983d3664dad3f1f89f"
 dependencies = [
  "unicode-segmentation",
 ]
+
+[[package]]
+name = "entities"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5320ae4c3782150d900b79807611a59a99fc9a1d61d686faafc24b93fc8d7ca"
 
 [[package]]
 name = "memchr"

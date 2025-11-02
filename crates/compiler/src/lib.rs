@@ -17,5 +17,8 @@ pub use escaped::*;
 mod entity;
 pub use entity::*;
 
-mod leaf;
-pub use leaf::*;
+mod s;
+pub use s::*;
+
+mod thematic;
+pub use thematic::*;

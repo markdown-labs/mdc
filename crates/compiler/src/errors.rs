@@ -5,8 +5,6 @@ use parserc::{ControlFlow, Kind, ParseError, Span};
 pub enum MarkDownError {
     #[error("{0:?}")]
     Kind(Kind),
-    #[error("{0:?}: Parsing `horizon` error, {1:?}")]
-    Horizon(ControlFlow, Span),
     #[error("{0:?}: Parsing `newline` error, {1:?}")]
     LineEnding(ControlFlow, Span),
     #[error("{0:?}: Parsing `leading whitespaces` error, {1:?}")]
@@ -17,6 +15,10 @@ pub enum MarkDownError {
     Escaped(ControlFlow, Span),
     #[error("{0:?}: Parsing `html5 entity` error, {1:?}")]
     Entity(ControlFlow, Span),
+    #[error("{0:?}: Parsing `thematic breaks` error, {1:?}")]
+    Thematic(ControlFlow, Span),
+    #[error("{0:?}: Parsing `Whitespace` error, {1:?}")]
+    S(ControlFlow, Span),
 }
 
 impl From<Kind> for MarkDownError {
@@ -34,19 +36,20 @@ impl ParseError for MarkDownError {
     fn control_flow(&self) -> parserc::ControlFlow {
         match self {
             MarkDownError::Kind(kind) => kind.control_flow(),
-            MarkDownError::Horizon(control_flow, _) => *control_flow,
             MarkDownError::LineEnding(control_flow, _) => *control_flow,
             MarkDownError::LeadingWhiteSpace(control_flow, _) => *control_flow,
             MarkDownError::LeadingPounds(control_flow, _) => *control_flow,
             MarkDownError::Escaped(control_flow, _) => *control_flow,
             MarkDownError::Entity(control_flow, _) => *control_flow,
+            MarkDownError::Thematic(control_flow, _) => *control_flow,
+            MarkDownError::S(control_flow, _) => *control_flow,
         }
     }
 
     fn into_fatal(self) -> Self {
         match self {
             MarkDownError::Kind(kind) => MarkDownError::Kind(kind.into_fatal()),
-            MarkDownError::Horizon(_, span) => MarkDownError::Horizon(ControlFlow::Fatal, span),
+            MarkDownError::S(_, span) => MarkDownError::S(ControlFlow::Fatal, span),
             MarkDownError::LineEnding(_, span) => {
                 MarkDownError::LineEnding(ControlFlow::Fatal, span)
             }
@@ -58,18 +61,20 @@ impl ParseError for MarkDownError {
             }
             MarkDownError::Escaped(_, span) => MarkDownError::Escaped(ControlFlow::Fatal, span),
             MarkDownError::Entity(_, span) => MarkDownError::Entity(ControlFlow::Fatal, span),
+            MarkDownError::Thematic(_, span) => MarkDownError::Entity(ControlFlow::Fatal, span),
         }
     }
 
     fn span(&self) -> Span {
         match self {
             MarkDownError::Kind(kind) => kind.span(),
-            MarkDownError::Horizon(_, span) => span.clone(),
+            MarkDownError::S(_, span) => span.clone(),
             MarkDownError::LineEnding(_, span) => span.clone(),
             MarkDownError::LeadingWhiteSpace(_, span) => span.clone(),
             MarkDownError::LeadingPounds(_, span) => span.clone(),
             MarkDownError::Escaped(_, span) => span.clone(),
             MarkDownError::Entity(_, span) => span.clone(),
+            MarkDownError::Thematic(_, span) => span.clone(),
         }
     }
 }

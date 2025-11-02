@@ -1,43 +1,6 @@
-use parserc::{
-    ControlFlow, ParseError, Parser, next,
-    syntax::{Syntax, keyword},
-};
+use parserc::{ControlFlow, Parser, next, syntax::Syntax};
 
-use crate::{MarkDownError, MarkDownInput};
-
-/// Line ending characters.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum LineEnding<I>
-where
-    I: MarkDownInput,
-{
-    LF(I),
-    CrLf(I),
-}
-
-impl<I> Syntax<I> for LineEnding<I>
-where
-    I: MarkDownInput,
-{
-    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
-        keyword!(LF, "\n");
-        keyword!(CrLf, "\r\n");
-
-        Lf::into_parser()
-            .map(|input| LineEnding::LF(input.0))
-            .or(CrLf::into_parser().map(|input| Self::CrLf(input.0)))
-            .parse(input)
-            .map_err(|err| MarkDownError::LineEnding(err.control_flow(), err.span()))
-    }
-
-    fn to_span(&self) -> parserc::Span {
-        match self {
-            LineEnding::LF(input) => input.to_span(),
-            LineEnding::CrLf(input) => input.to_span(),
-        }
-    }
-}
+use crate::{LineEnding, MarkDownError, MarkDownInput};
 
 /// Escaped characters
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]

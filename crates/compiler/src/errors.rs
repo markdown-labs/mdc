@@ -21,6 +21,8 @@ pub enum Kind {
     S1,
     #[error("ATX heading")]
     ATXHeading,
+    #[error("blank line")]
+    BlankLine,
 }
 
 impl Kind {

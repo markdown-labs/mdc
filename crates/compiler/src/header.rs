@@ -4,7 +4,7 @@ use parserc::{
     take_while,
 };
 
-use crate::{IdentWhiteSpaces, Kind, LineEnding, MarkDownError, MarkDownInput};
+use crate::{IndentationTo, Kind, LineEnding, MarkDownError, MarkDownInput};
 
 /// An [`ATX heading`] parser.
 ///
@@ -16,15 +16,15 @@ where
     I: MarkDownInput,
 {
     /// Up to three spaces of indentation are allowed:
-    ident_whitespaces: IdentWhiteSpaces<I, 3>,
+    pub ident_whitespaces: IndentationTo<I, 3>,
     /// keywords `##...`.
-    leading_pounds: I,
+    pub leading_pounds: I,
     /// seperate spaces/tabs/line ending.
-    seperate: I,
+    pub seperate: I,
     /// heading content.
-    content: I,
+    pub content: I,
     /// Optional line ending chars.
-    line_ending: Option<LineEnding<I>>,
+    pub line_ending: Option<LineEnding<I>>,
 }
 
 impl<I> Syntax<I> for ATXHeading<I>
@@ -34,7 +34,7 @@ where
     #[inline]
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
         let ident_whitespaces =
-            IdentWhiteSpaces::<I, 3>::parse(input).map_err(Kind::ATXHeading.map())?;
+            IndentationTo::<I, 3>::parse(input).map_err(Kind::ATXHeading.map())?;
 
         token!(Pounds, |c: char| c == '#');
 
@@ -78,14 +78,14 @@ where
 mod tests {
     use parserc::{ControlFlow, Span, syntax::InputSyntaxExt};
 
-    use crate::{ATXHeading, IdentWhiteSpaces, Kind, LineEnding, MarkDownError, TokenStream};
+    use crate::{ATXHeading, IndentationTo, Kind, LineEnding, MarkDownError, TokenStream};
 
     #[test]
     fn test_atx_heading() {
         assert_eq!(
             TokenStream::from(" ###### hello world\r\n").parse(),
             Ok(ATXHeading {
-                ident_whitespaces: IdentWhiteSpaces(TokenStream::from(" ")),
+                ident_whitespaces: IndentationTo(TokenStream::from(" ")),
                 leading_pounds: TokenStream::from((1, "######")),
                 seperate: TokenStream::from((7, " ")),
                 content: TokenStream::from((8, "hello world")),
@@ -96,7 +96,7 @@ mod tests {
         assert_eq!(
             TokenStream::from("###### hello world ").parse(),
             Ok(ATXHeading {
-                ident_whitespaces: IdentWhiteSpaces(TokenStream::from("")),
+                ident_whitespaces: IndentationTo(TokenStream::from("")),
                 leading_pounds: TokenStream::from("######"),
                 seperate: TokenStream::from((6, " ")),
                 content: TokenStream::from((7, "hello world ")),
@@ -107,7 +107,7 @@ mod tests {
         assert_eq!(
             TokenStream::from("   # ").parse(),
             Ok(ATXHeading {
-                ident_whitespaces: IdentWhiteSpaces(TokenStream::from("   ")),
+                ident_whitespaces: IndentationTo(TokenStream::from("   ")),
                 leading_pounds: TokenStream::from((3, "#")),
                 seperate: TokenStream::from((4, " ")),
                 content: TokenStream::from((5, "")),

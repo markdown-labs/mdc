@@ -1,6 +1,6 @@
 use parserc::{
     ControlFlow, ParseError, Parser,
-    syntax::{LimitsTo, Syntax, keyword},
+    syntax::{LimitsFrom, LimitsTo, Syntax, keyword},
     take_while,
 };
 
@@ -59,20 +59,46 @@ where
     }
 }
 
-/// The leading whitespaces for one line.
+/// Up to `N` spaces of indentation.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct IdentWhiteSpaces<I, const N: usize>(pub I)
+pub struct IndentationTo<I, const N: usize>(pub I)
 where
     I: MarkDownInput;
 
-impl<I, const N: usize> Syntax<I> for IdentWhiteSpaces<I, N>
+impl<I, const N: usize> Syntax<I> for IndentationTo<I, N>
 where
     I: MarkDownInput,
 {
     #[inline]
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
         LimitsTo::<S<I>, N>::parse(input)
+            .map_err(|err| {
+                MarkDownError::Kind(Kind::LeadingWhiteSpace, err.control_flow(), err.span())
+            })
+            .map(|content| Self(content.0.0))
+    }
+
+    #[inline]
+    fn to_span(&self) -> parserc::Span {
+        self.0.to_span()
+    }
+}
+
+/// Preceded by `N` or more spaces of indentation
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct IndentationFrom<I, const N: usize>(pub I)
+where
+    I: MarkDownInput;
+
+impl<I, const N: usize> Syntax<I> for IndentationFrom<I, N>
+where
+    I: MarkDownInput,
+{
+    #[inline]
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        LimitsFrom::<S<I>, N>::parse(input)
             .map_err(|err| {
                 MarkDownError::Kind(Kind::LeadingWhiteSpace, err.control_flow(), err.span())
             })
@@ -96,10 +122,25 @@ where
     CrLf(I),
 }
 
+impl<I> LineEnding<I>
+where
+    I: MarkDownInput,
+{
+    /// Convert `LineEnding` into `MarkDownInput`
+    #[inline]
+    pub(crate) fn into_input(self) -> I {
+        match self {
+            LineEnding::LF(input) => input,
+            LineEnding::CrLf(input) => input,
+        }
+    }
+}
+
 impl<I> Syntax<I> for LineEnding<I>
 where
     I: MarkDownInput,
 {
+    #[inline]
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
         keyword!(LF, "\n");
         keyword!(CrLf, "\r\n");
@@ -111,10 +152,37 @@ where
             .map_err(|err| MarkDownError::Kind(Kind::LineEnding, err.control_flow(), err.span()))
     }
 
+    #[inline]
     fn to_span(&self) -> parserc::Span {
         match self {
             LineEnding::LF(input) => input.to_span(),
             LineEnding::CrLf(input) => input.to_span(),
         }
+    }
+}
+
+/// A blank line contains no characters other than the line ending characters.
+///
+/// See [`https://spec.commonmark.org/0.31.2/#blank-lines`]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct BlankLine<I>(pub I)
+where
+    I: MarkDownInput;
+
+impl<I> Syntax<I> for BlankLine<I>
+where
+    I: MarkDownInput,
+{
+    #[inline]
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        LineEnding::parse(input)
+            .map(|content| Self(content.into_input()))
+            .map_err(Kind::BlankLine.map())
+    }
+
+    #[inline]
+    fn to_span(&self) -> parserc::Span {
+        self.0.to_span()
     }
 }

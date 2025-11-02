@@ -3,11 +3,11 @@ use parserc::{
     syntax::{InputSyntaxExt, Punctuated, Syntax, token},
 };
 
-use crate::{IdentWhiteSpaces, Kind, LineEnding, MarkDownError, MarkDownInput, S1};
+use crate::{IndentationTo, Kind, LineEnding, MarkDownError, MarkDownInput, S1};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-enum ThematicChars<I>
+pub enum ThematicChars<I>
 where
     I: MarkDownInput,
 {
@@ -75,11 +75,11 @@ where
     I: MarkDownInput,
 {
     /// A line consisting of optionally up to three spaces of indentation
-    ident_whitespaces: IdentWhiteSpaces<I, 3>,
+    pub ident_whitespaces: IndentationTo<I, 3>,
     /// core thematic breaks chars.
-    breaks: Punctuated<ThematicChars<I>, S1<I>>,
+    pub breaks: Punctuated<ThematicChars<I>, S1<I>>,
     /// optional line end.
-    line_ending: Option<LineEnding<I>>,
+    pub line_ending: Option<LineEnding<I>>,
 }
 
 impl<I> Syntax<I> for ThematicBreaks<I>
@@ -87,7 +87,7 @@ where
     I: MarkDownInput,
 {
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
-        let ident_whitespaces = IdentWhiteSpaces::<I, 3>::parse(input)?;
+        let ident_whitespaces = IndentationTo::<I, 3>::parse(input)?;
 
         let breaks = Punctuated::<ThematicChars<I>, _>::parse(input)
             .map_err(|err| MarkDownError::Kind(Kind::Thematic, err.control_flow(), err.span()))?;
@@ -200,7 +200,7 @@ mod tests {
         assert_eq!(
             TokenStream::from("   -   -  -   ").parse(),
             Ok(ThematicBreaks {
-                ident_whitespaces: IdentWhiteSpaces(TokenStream::from("   ")),
+                ident_whitespaces: IndentationTo(TokenStream::from("   ")),
                 breaks: Punctuated {
                     pairs: vec![
                         (
@@ -225,7 +225,7 @@ mod tests {
         assert_eq!(
             TokenStream::from("   -   -  -").parse(),
             Ok(ThematicBreaks {
-                ident_whitespaces: IdentWhiteSpaces(TokenStream::from("   ")),
+                ident_whitespaces: IndentationTo(TokenStream::from("   ")),
                 breaks: Punctuated {
                     pairs: vec![
                         (
@@ -246,7 +246,7 @@ mod tests {
         assert_eq!(
             TokenStream::from("   -   -  -\n").parse(),
             Ok(ThematicBreaks {
-                ident_whitespaces: IdentWhiteSpaces(TokenStream::from("   ")),
+                ident_whitespaces: IndentationTo(TokenStream::from("   ")),
                 breaks: Punctuated {
                     pairs: vec![
                         (

@@ -9,8 +9,6 @@ pub use errors::*;
 mod input;
 pub use input::*;
 
-mod item;
-
 mod escaped;
 pub use escaped::*;
 
@@ -25,3 +23,6 @@ pub use thematic::*;
 
 mod header;
 pub use header::*;
+
+mod code;
+pub use code::*;

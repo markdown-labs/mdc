@@ -1,6 +1,6 @@
 use parserc::{ControlFlow, Parser, next, syntax::Syntax};
 
-use crate::{LineEnding, MarkDownError, MarkDownInput};
+use crate::{Kind, LineEnding, MarkDownError, MarkDownInput};
 
 /// Escaped characters
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -80,7 +80,8 @@ where
                     return Ok(Escaped::HardlineBreak(start.split_to(len + 1)));
                 }
 
-                return Err(MarkDownError::Escaped(
+                return Err(MarkDownError::Kind(
+                    Kind::Escaped,
                     ControlFlow::Recovable,
                     start.to_span(),
                 ));

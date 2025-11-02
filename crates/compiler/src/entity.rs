@@ -3,7 +3,7 @@ use std::{cmp, collections::HashSet, sync::LazyLock};
 use entities::ENTITIES;
 use parserc::{ControlFlow, ParseError, Parser, Span, next, syntax::Syntax};
 
-use crate::{MarkDownError, MarkDownInput};
+use crate::{Kind, MarkDownError, MarkDownInput};
 
 /// Valid entity names.
 #[allow(unused)]
@@ -26,7 +26,7 @@ where
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
         next('&')
             .parse(&mut input.clone())
-            .map_err(|err| MarkDownError::Entity(err.control_flow(), err.span()))?;
+            .map_err(|err| MarkDownError::Kind(Kind::Entity, err.control_flow(), err.span()))?;
 
         let mut last = None;
 
@@ -45,13 +45,17 @@ where
             let start = input.start();
             let span = Span::Range(start..start + cmp::min(100, input.len()));
 
-            return Err(MarkDownError::Entity(ControlFlow::Fatal, span));
+            return Err(MarkDownError::Kind(Kind::Entity, ControlFlow::Fatal, span));
         };
 
         let content = input.split_to(last);
 
         if !NAMES.contains(content.as_str()) {
-            return Err(MarkDownError::Entity(ControlFlow::Fatal, content.to_span()));
+            return Err(MarkDownError::Kind(
+                Kind::Entity,
+                ControlFlow::Fatal,
+                content.to_span(),
+            ));
         }
 
         Ok(Self(content))
@@ -66,7 +70,7 @@ where
 mod tests {
     use parserc::{ControlFlow, Span, syntax::InputSyntaxExt};
 
-    use crate::{Entity, MarkDownError, TokenStream, entity::MAX_ENTITY_LEN};
+    use crate::{Entity, Kind, MarkDownError, TokenStream, entity::MAX_ENTITY_LEN};
 
     #[test]
     fn test_entities() {
@@ -79,7 +83,8 @@ mod tests {
 
         assert_eq!(
             TokenStream::from(input.as_str()).parse::<Entity<_>>(),
-            Err(MarkDownError::Entity(
+            Err(MarkDownError::Kind(
+                Kind::Entity,
                 ControlFlow::Fatal,
                 Span::Range(0..100)
             ))
@@ -87,12 +92,17 @@ mod tests {
 
         assert_eq!(
             TokenStream::from("&amp").parse::<Entity<_>>(),
-            Err(MarkDownError::Entity(ControlFlow::Fatal, Span::Range(0..4)))
+            Err(MarkDownError::Kind(
+                Kind::Entity,
+                ControlFlow::Fatal,
+                Span::Range(0..4)
+            ))
         );
 
         assert_eq!(
             TokenStream::from("amp").parse::<Entity<_>>(),
-            Err(MarkDownError::Entity(
+            Err(MarkDownError::Kind(
+                Kind::Entity,
                 ControlFlow::Recovable,
                 Span::Range(0..1)
             ))
@@ -100,7 +110,11 @@ mod tests {
 
         assert_eq!(
             TokenStream::from("&abc;").parse::<Entity<_>>(),
-            Err(MarkDownError::Entity(ControlFlow::Fatal, Span::Range(0..5)))
+            Err(MarkDownError::Kind(
+                Kind::Entity,
+                ControlFlow::Fatal,
+                Span::Range(0..5)
+            ))
         );
     }
 }

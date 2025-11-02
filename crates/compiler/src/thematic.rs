@@ -3,7 +3,7 @@ use parserc::{
     syntax::{InputSyntaxExt, Punctuated, Syntax, token},
 };
 
-use crate::{IdentWhiteSpaces, LineEnding, MarkDownError, MarkDownInput, S};
+use crate::{IdentWhiteSpaces, Kind, LineEnding, MarkDownError, MarkDownInput, S1};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -77,7 +77,7 @@ where
     /// A line consisting of optionally up to three spaces of indentation
     ident_whitespaces: IdentWhiteSpaces<I, 3>,
     /// core thematic breaks chars.
-    breaks: Punctuated<ThematicChars<I>, S<I>>,
+    breaks: Punctuated<ThematicChars<I>, S1<I>>,
     /// optional line end.
     line_ending: Option<LineEnding<I>>,
 }
@@ -89,15 +89,16 @@ where
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
         let ident_whitespaces = IdentWhiteSpaces::<I, 3>::parse(input)?;
 
-        let breaks = Punctuated::<ThematicChars<I>, S<I>>::parse(input)
-            .map_err(|err| MarkDownError::Thematic(err.control_flow(), err.span()))?;
+        let breaks = Punctuated::<ThematicChars<I>, _>::parse(input)
+            .map_err(|err| MarkDownError::Kind(Kind::Thematic, err.control_flow(), err.span()))?;
 
         let id = breaks.pairs.first().map(|pair| pair.0.value());
 
         let Some(id) = id else {
             if let Some(tail) = &breaks.tail {
                 if tail.len() < 3 {
-                    return Err(MarkDownError::Thematic(
+                    return Err(MarkDownError::Kind(
+                        Kind::Thematic,
                         ControlFlow::Recovable,
                         tail.to_span(),
                     ));
@@ -106,7 +107,8 @@ where
                 let line_ending: Option<LineEnding<_>> = input.parse()?;
 
                 if line_ending.is_none() && !input.is_empty() {
-                    return Err(MarkDownError::Thematic(
+                    return Err(MarkDownError::Kind(
+                        Kind::Thematic,
                         ControlFlow::Recovable,
                         breaks.to_span(),
                     ));
@@ -119,7 +121,8 @@ where
                 });
             }
 
-            return Err(MarkDownError::Thematic(
+            return Err(MarkDownError::Kind(
+                Kind::Thematic,
                 ControlFlow::Recovable,
                 ident_whitespaces.to_span(),
             ));
@@ -129,7 +132,8 @@ where
 
         for (pair, _) in breaks.pairs.iter() {
             if pair.value() != id {
-                return Err(MarkDownError::Thematic(
+                return Err(MarkDownError::Kind(
+                    Kind::Thematic,
                     ControlFlow::Recovable,
                     pair.to_span(),
                 ));
@@ -140,7 +144,8 @@ where
 
         if let Some(tail) = &breaks.tail {
             if tail.value() != id {
-                return Err(MarkDownError::Thematic(
+                return Err(MarkDownError::Kind(
+                    Kind::Thematic,
                     ControlFlow::Recovable,
                     tail.to_span(),
                 ));
@@ -150,7 +155,8 @@ where
         }
 
         if len < 3 {
-            return Err(MarkDownError::Thematic(
+            return Err(MarkDownError::Kind(
+                Kind::Thematic,
                 ControlFlow::Recovable,
                 breaks.to_span(),
             ));
@@ -159,7 +165,8 @@ where
         let line_ending: Option<LineEnding<_>> = input.parse()?;
 
         if line_ending.is_none() && !input.is_empty() {
-            return Err(MarkDownError::Thematic(
+            return Err(MarkDownError::Kind(
+                Kind::Thematic,
                 ControlFlow::Recovable,
                 breaks.to_span(),
             ));
@@ -198,15 +205,15 @@ mod tests {
                     pairs: vec![
                         (
                             ThematicChars::Minus(TokenStream::from((3, "-"))),
-                            S(TokenStream::from((4, "   ")))
+                            S1(TokenStream::from((4, "   ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((7, "-"))),
-                            S(TokenStream::from((8, "  ")))
+                            S1(TokenStream::from((8, "  ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((10, "-"))),
-                            S(TokenStream::from((11, "   ")))
+                            S1(TokenStream::from((11, "   ")))
                         )
                     ],
                     tail: None
@@ -223,11 +230,11 @@ mod tests {
                     pairs: vec![
                         (
                             ThematicChars::Minus(TokenStream::from((3, "-"))),
-                            S(TokenStream::from((4, "   ")))
+                            S1(TokenStream::from((4, "   ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((7, "-"))),
-                            S(TokenStream::from((8, "  ")))
+                            S1(TokenStream::from((8, "  ")))
                         ),
                     ],
                     tail: Some(Box::new(ThematicChars::Minus(TokenStream::from((10, "-")))))
@@ -244,11 +251,11 @@ mod tests {
                     pairs: vec![
                         (
                             ThematicChars::Minus(TokenStream::from((3, "-"))),
-                            S(TokenStream::from((4, "   ")))
+                            S1(TokenStream::from((4, "   ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((7, "-"))),
-                            S(TokenStream::from((8, "  ")))
+                            S1(TokenStream::from((8, "  ")))
                         ),
                     ],
                     tail: Some(Box::new(ThematicChars::Minus(TokenStream::from((10, "-")))))

@@ -4,7 +4,7 @@ use parserc::{
     take_while,
 };
 
-use crate::{MarkDownError, MarkDownInput};
+use crate::{Kind, MarkDownError, MarkDownInput};
 
 /// Whitespace chars.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -18,11 +18,37 @@ where
     I: MarkDownInput,
 {
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        take_while(|c: char| c != '\n' && c != '\r' && c.is_whitespace())
+            .parse(input)
+            .map(|c| Self(c))
+    }
+
+    fn to_span(&self) -> parserc::Span {
+        self.0.to_span()
+    }
+}
+
+/// Non-empty whitespace chars.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct S1<I>(pub I)
+where
+    I: MarkDownInput;
+
+impl<I> Syntax<I> for S1<I>
+where
+    I: MarkDownInput,
+{
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
         let content =
             take_while(|c: char| c != '\n' && c != '\r' && c.is_whitespace()).parse(input)?;
 
         if content.is_empty() {
-            return Err(MarkDownError::S(ControlFlow::Recovable, content.to_span()));
+            return Err(MarkDownError::Kind(
+                Kind::S,
+                ControlFlow::Recovable,
+                content.to_span(),
+            ));
         }
 
         Ok(Self(content))
@@ -47,7 +73,9 @@ where
     #[inline]
     fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
         LimitsTo::<S<I>, N>::parse(input)
-            .map_err(|err| MarkDownError::LeadingWhiteSpace(err.control_flow(), err.span()))
+            .map_err(|err| {
+                MarkDownError::Kind(Kind::LeadingWhiteSpace, err.control_flow(), err.span())
+            })
             .map(|content| Self(content.0.0))
     }
 
@@ -80,7 +108,7 @@ where
             .map(|input| LineEnding::LF(input.0))
             .or(CrLf::into_parser().map(|input| Self::CrLf(input.0)))
             .parse(input)
-            .map_err(|err| MarkDownError::LineEnding(err.control_flow(), err.span()))
+            .map_err(|err| MarkDownError::Kind(Kind::LineEnding, err.control_flow(), err.span()))
     }
 
     fn to_span(&self) -> parserc::Span {

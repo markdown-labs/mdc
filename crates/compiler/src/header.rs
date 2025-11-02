@@ -1,10 +1,10 @@
 use parserc::{
-    Parser,
+    ControlFlow, Parser,
     syntax::{InputSyntaxExt, Limits, Syntax, token},
     take_while,
 };
 
-use crate::{IdentWhiteSpaces, Kind, LineEnding, MarkDownInput};
+use crate::{IdentWhiteSpaces, Kind, LineEnding, MarkDownError, MarkDownInput};
 
 /// An [`ATX heading`] parser.
 ///
@@ -19,6 +19,8 @@ where
     ident_whitespaces: IdentWhiteSpaces<I, 3>,
     /// keywords `##...`.
     leading_pounds: I,
+    /// seperate spaces/tabs/line ending.
+    seperate: I,
     /// heading content.
     content: I,
     /// Optional line ending chars.
@@ -39,15 +41,26 @@ where
         let leading_pounds =
             Limits::<Pounds<_>, 1, 7>::parse(input).map_err(Kind::ATXHeading.map())?;
 
-        let content = take_while(|c: char| c != '\r' && c != '\n').parse(input)?;
+        let mut content = take_while(|c: char| c != '\r' && c != '\n').parse(input)?;
 
-        let line_ending = input.parse().map_err(Kind::ATXHeading.map())?;
+        let line_ending: Option<LineEnding<_>> = input.parse().map_err(Kind::ATXHeading.map())?;
+
+        let seperate = take_while(|c: char| c.is_whitespace()).parse(&mut content)?;
+
+        if seperate.is_empty() && line_ending.is_none() {
+            return Err(MarkDownError::Kind(
+                Kind::ATXHeading,
+                ControlFlow::Recovable,
+                seperate.to_span(),
+            ));
+        }
 
         Ok(Self {
             ident_whitespaces,
             leading_pounds: leading_pounds.0.0,
             content,
             line_ending,
+            seperate,
         })
     }
 
@@ -63,9 +76,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use parserc::syntax::InputSyntaxExt;
+    use parserc::{ControlFlow, Span, syntax::InputSyntaxExt};
 
-    use crate::{ATXHeading, IdentWhiteSpaces, LineEnding, TokenStream};
+    use crate::{ATXHeading, IdentWhiteSpaces, Kind, LineEnding, MarkDownError, TokenStream};
 
     #[test]
     fn test_atx_heading() {
@@ -74,7 +87,8 @@ mod tests {
             Ok(ATXHeading {
                 ident_whitespaces: IdentWhiteSpaces(TokenStream::from(" ")),
                 leading_pounds: TokenStream::from((1, "######")),
-                content: TokenStream::from((7, " hello world")),
+                seperate: TokenStream::from((7, " ")),
+                content: TokenStream::from((8, "hello world")),
                 line_ending: Some(LineEnding::CrLf(TokenStream::from((19, "\r\n"))))
             })
         );
@@ -84,19 +98,30 @@ mod tests {
             Ok(ATXHeading {
                 ident_whitespaces: IdentWhiteSpaces(TokenStream::from("")),
                 leading_pounds: TokenStream::from("######"),
-                content: TokenStream::from((6, " hello world ")),
+                seperate: TokenStream::from((6, " ")),
+                content: TokenStream::from((7, "hello world ")),
                 line_ending: None
             })
         );
 
         assert_eq!(
-            TokenStream::from("   #").parse(),
+            TokenStream::from("   # ").parse(),
             Ok(ATXHeading {
                 ident_whitespaces: IdentWhiteSpaces(TokenStream::from("   ")),
                 leading_pounds: TokenStream::from((3, "#")),
-                content: TokenStream::from((4, "")),
+                seperate: TokenStream::from((4, " ")),
+                content: TokenStream::from((5, "")),
                 line_ending: None
             })
+        );
+
+        assert_eq!(
+            TokenStream::from("   #").parse::<ATXHeading<_>>(),
+            Err(MarkDownError::Kind(
+                Kind::ATXHeading,
+                ControlFlow::Recovable,
+                Span::Range(4..4)
+            ))
         );
     }
 }

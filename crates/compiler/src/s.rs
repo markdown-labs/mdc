@@ -31,11 +31,11 @@ where
 /// Non-empty whitespace chars.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct S1<I>(pub I)
+pub struct Identation<I>(pub I)
 where
     I: MarkDownInput;
 
-impl<I> Syntax<I> for S1<I>
+impl<I> Syntax<I> for Identation<I>
 where
     I: MarkDownInput,
 {

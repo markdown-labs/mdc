@@ -3,7 +3,7 @@ use parserc::{
     syntax::{InputSyntaxExt, Punctuated, Syntax, token},
 };
 
-use crate::{IndentationTo, Kind, LineEnding, MarkDownError, MarkDownInput, S1};
+use crate::{Identation, IndentationTo, Kind, LineEnding, MarkDownError, MarkDownInput};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -77,7 +77,7 @@ where
     /// A line consisting of optionally up to three spaces of indentation
     pub ident_whitespaces: IndentationTo<I, 3>,
     /// core thematic breaks chars.
-    pub breaks: Punctuated<ThematicChars<I>, S1<I>>,
+    pub breaks: Punctuated<ThematicChars<I>, Identation<I>>,
     /// optional line end.
     pub line_ending: Option<LineEnding<I>>,
 }
@@ -205,15 +205,15 @@ mod tests {
                     pairs: vec![
                         (
                             ThematicChars::Minus(TokenStream::from((3, "-"))),
-                            S1(TokenStream::from((4, "   ")))
+                            Identation(TokenStream::from((4, "   ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((7, "-"))),
-                            S1(TokenStream::from((8, "  ")))
+                            Identation(TokenStream::from((8, "  ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((10, "-"))),
-                            S1(TokenStream::from((11, "   ")))
+                            Identation(TokenStream::from((11, "   ")))
                         )
                     ],
                     tail: None
@@ -230,11 +230,11 @@ mod tests {
                     pairs: vec![
                         (
                             ThematicChars::Minus(TokenStream::from((3, "-"))),
-                            S1(TokenStream::from((4, "   ")))
+                            Identation(TokenStream::from((4, "   ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((7, "-"))),
-                            S1(TokenStream::from((8, "  ")))
+                            Identation(TokenStream::from((8, "  ")))
                         ),
                     ],
                     tail: Some(Box::new(ThematicChars::Minus(TokenStream::from((10, "-")))))
@@ -251,11 +251,11 @@ mod tests {
                     pairs: vec![
                         (
                             ThematicChars::Minus(TokenStream::from((3, "-"))),
-                            S1(TokenStream::from((4, "   ")))
+                            Identation(TokenStream::from((4, "   ")))
                         ),
                         (
                             ThematicChars::Minus(TokenStream::from((7, "-"))),
-                            S1(TokenStream::from((8, "  ")))
+                            Identation(TokenStream::from((8, "  ")))
                         ),
                     ],
                     tail: Some(Box::new(ThematicChars::Minus(TokenStream::from((10, "-")))))

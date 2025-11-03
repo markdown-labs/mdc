@@ -202,5 +202,29 @@ mod tests {
                 }),
             ])),
         );
+
+        assert_eq!(
+            TokenStream::from("     helle\n\n   \n    world\nworld").parse(),
+            Ok(IndentedCodeBlock(vec![
+                IdentedChunk::NonBlank(IndentedNonblankLine {
+                    identation: IndentationFrom(TokenStream::from("     ")),
+                    content: TokenStream::from((5, "helle")),
+                    line_ending: Some(LineEnding::LF(TokenStream::from((10, "\n"))))
+                }),
+                IdentedChunk::Blank(IndentedBlankLine {
+                    leading_whitespaces: S(TokenStream::from((11, ""))),
+                    line_ending: LineEnding::LF(TokenStream::from((11, "\n")))
+                }),
+                IdentedChunk::Blank(IndentedBlankLine {
+                    leading_whitespaces: S(TokenStream::from((12, "   "))),
+                    line_ending: LineEnding::LF(TokenStream::from((15, "\n")))
+                }),
+                IdentedChunk::NonBlank(IndentedNonblankLine {
+                    identation: IndentationFrom(TokenStream::from((16, "    "))),
+                    content: TokenStream::from((20, "world")),
+                    line_ending: Some(LineEnding::LF(TokenStream::from((25, "\n"))))
+                }),
+            ])),
+        );
     }
 }

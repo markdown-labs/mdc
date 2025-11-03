@@ -145,9 +145,9 @@ where
         keyword!(LF, "\n");
         keyword!(CrLf, "\r\n");
 
-        Lf::into_parser()
-            .map(|input| LineEnding::LF(input.0))
-            .or(CrLf::into_parser().map(|input| Self::CrLf(input.0)))
+        CrLf::into_parser()
+            .map(|input| LineEnding::CrLf(input.0))
+            .or(Lf::into_parser().map(|input| Self::LF(input.0)))
             .parse(input)
             .map_err(|err| MarkDownError::Kind(Kind::LineEnding, err.control_flow(), err.span()))
     }

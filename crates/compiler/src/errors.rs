@@ -23,6 +23,10 @@ pub enum Kind {
     ATXHeading,
     #[error("blank line")]
     BlankLine,
+    #[error("identation non-blank chunk")]
+    IdentationNonblankChunk,
+    #[error("identation blank chunk")]
+    IdentationBlankChunk,
 }
 
 impl Kind {

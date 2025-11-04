@@ -1,9 +1,9 @@
 use std::cmp;
 
 use parserc::{
-    ControlFlow, Parser, Span,
+    ControlFlow, Parser, Span, next_if,
     syntax::{InputSyntaxExt, Syntax},
-    take_till,
+    take_till, take_until, take_while,
 };
 
 use crate::{IndentationFrom, Kind, LineEnding, MarkDownError, MarkDownInput, S};
@@ -99,13 +99,110 @@ pub struct IndentedCodeBlock<I>(pub Vec<IdentedChunk<I>>)
 where
     I: MarkDownInput;
 
+/// Non-empty backtick characters (`) or tildes (~).
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Fenced<I>(pub I)
+where
+    I: MarkDownInput;
+
+impl<I> Syntax<I> for Fenced<I>
+where
+    I: MarkDownInput,
+{
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        let mut content = input.clone();
+
+        let start = next_if(|c: char| c == '`' || c == '~').parse(input)?;
+
+        let next = match start.as_str() {
+            "`" => '`',
+            "~" => '~',
+            _ => unreachable!(""),
+        };
+
+        let trailing = take_while(|c: char| c == next).parse(input)?;
+
+        *input = content.split_off(trailing.len() + 1);
+
+        if content.len() < 3 {
+            return Err(MarkDownError::Kind(
+                Kind::FencedCodeBlock,
+                ControlFlow::Recovable,
+                content.to_span(),
+            ));
+        }
+
+        Ok(Self(content))
+    }
+
+    fn to_span(&self) -> Span {
+        self.0.to_span()
+    }
+}
+
+/// A [`code fence`] is a sequence of at least three consecutive backtick characters (`) or tildes (~).
+///
+/// [`code fence`]: https://spec.commonmark.org/0.31.2/#code-fence
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct FencedCodeBlock<I>
+where
+    I: MarkDownInput,
+{
+    /// Start tag.
+    pub start: Fenced<I>,
+    /// Code body.
+    pub body: I,
+    /// End tag.
+    pub end: Option<Fenced<I>>,
+}
+
+impl<I> Syntax<I> for FencedCodeBlock<I>
+where
+    I: MarkDownInput + 'static,
+{
+    #[inline]
+    fn parse(input: &mut I) -> Result<Self, <I as parserc::Input>::Error> {
+        let start = Fenced::parse(input)?;
+
+        let body = take_until(start.0.clone()).ok().parse(input)?;
+
+        if let Some(body) = body {
+            let end = Fenced::parse(input)?;
+
+            assert_eq!(start.0.len(), end.0.len());
+
+            Ok(Self {
+                start,
+                body,
+                end: Some(end),
+            })
+        } else {
+            Ok(Self {
+                start,
+                body: input.split_off(0),
+                end: None,
+            })
+        }
+    }
+
+    #[inline]
+    fn to_span(&self) -> Span {
+        self.start
+            .to_span()
+            .union(&self.body.to_span())
+            .union(&self.end.to_span())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use parserc::{ControlFlow, Span, syntax::InputSyntaxExt};
 
     use crate::{
-        IdentedChunk, IndentationFrom, IndentedBlankLine, IndentedCodeBlock, IndentedNonblankLine,
-        Kind, LineEnding, MarkDownError, S, TokenStream,
+        Fenced, FencedCodeBlock, IdentedChunk, IndentationFrom, IndentedBlankLine,
+        IndentedCodeBlock, IndentedNonblankLine, Kind, LineEnding, MarkDownError, S, TokenStream,
     };
 
     #[test]
@@ -225,6 +322,27 @@ mod tests {
                     line_ending: Some(LineEnding::LF(TokenStream::from((25, "\n"))))
                 }),
             ])),
+        );
+    }
+
+    #[test]
+    fn test_fenced_code_block() {
+        assert_eq!(
+            TokenStream::from("~~~~\naaa\n~~~\n~~~~",).parse(),
+            Ok(FencedCodeBlock {
+                start: Fenced(TokenStream::from("~~~~")),
+                body: TokenStream::from((4, "\naaa\n~~~\n")),
+                end: Some(Fenced(TokenStream::from((13, "~~~~"))))
+            })
+        );
+
+        assert_eq!(
+            TokenStream::from("~~~~\naaa\n~~~\n",).parse(),
+            Ok(FencedCodeBlock {
+                start: Fenced(TokenStream::from("~~~~")),
+                body: TokenStream::from((4, "\naaa\n~~~\n")),
+                end: None
+            })
         );
     }
 }

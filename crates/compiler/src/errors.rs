@@ -5,28 +5,42 @@ use parserc::{ControlFlow, ParseError, Span};
 pub enum Kind {
     #[error("line ending chars")]
     LineEnding,
+
     #[error("leading whitespaces")]
     LeadingWhiteSpace,
+
     #[error("leading #..")]
     LeadingPounds,
+
     #[error("escaped")]
     Escaped,
+
     #[error("html5 entities")]
     Entity,
+
     #[error("thematic breaks")]
     Thematic,
+
     #[error("whitespaces")]
     S,
+
     #[error("non-empty whitespace chars")]
     S1,
+
     #[error("ATX heading")]
     ATXHeading,
+
     #[error("blank line")]
     BlankLine,
+
     #[error("identation non-blank chunk")]
     IdentationNonblankChunk,
+
     #[error("identation blank chunk")]
     IdentationBlankChunk,
+
+    #[error("fenced code block")]
+    FencedCodeBlock,
 }
 
 impl Kind {

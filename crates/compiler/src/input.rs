@@ -17,6 +17,7 @@ pub trait MarkDownInput:
     + StartWith<&'static [u8]>
     + Find<&'static str>
     + Find<&'static [u8]>
+    + Find<Self>
     + Clone
     + Debug
     + PartialEq
@@ -200,6 +201,13 @@ impl<'a, const N: usize> Find<&[u8; N]> for TokenStream<'a> {
     #[inline]
     fn find(&self, needle: &[u8; N]) -> Option<usize> {
         memmem::find(self.as_bytes(), needle)
+    }
+}
+
+impl<'a> Find<TokenStream<'a>> for TokenStream<'a> {
+    #[inline]
+    fn find(&self, needle: TokenStream<'a>) -> Option<usize> {
+        memmem::find(self.as_bytes(), needle.value.as_bytes())
     }
 }
 
